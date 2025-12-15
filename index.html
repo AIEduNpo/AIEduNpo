@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Fraud Detection Game</title>
+    <style>
+        :root {
+            --neon-green: #0f0;
+            --neon-red: #f00;
+            --neon-blue: #00e5ff;
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+        }
+        body {
+            font-family: "Microsoft JhengHei", "Heiti TC", 'Segoe UI', sans-serif;
+            background-color: var(--bg-color);
+            color: white;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* --- LANGUAGE TOGGLE --- */
+        .lang-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid #555;
+            color: white;
+            padding: 8px 15px;
+            cursor: pointer;
+            border-radius: 20px;
+            z-index: 100;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+        .lang-btn:hover { background: rgba(255,255,255,0.3); }
+
+        /* --- LAYOUT --- */
+        .game-wrapper {
+            position: relative;
+            width: 95%;
+            max-width: 1000px;
+            height: 90vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .header {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            font-size: 1.2rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        /* --- TIMER --- */
+        .timer-container {
+            width: 100%;
+            height: 10px;
+            background: #333;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            overflow: hidden;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+        .timer-bar {
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(90deg, var(--neon-green), #ffeb3b, var(--neon-red));
+        }
+
+        /* --- IMAGE FRAME --- */
+        .image-frame {
+            flex-grow: 1;
+            width: 100%;
+            background: #000;
+            border: 2px solid #444;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+
+        img {
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            display: block;
+        }
+
+        /* --- BUTTONS --- */
+        .controls {
+            display: flex;
+            gap: 20px;
+            width: 100%;
+            height: 70px;
+            margin-bottom: 15px;
+        }
+        .btn-guess {
+            flex: 1;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            cursor: pointer;
+            color: white;
+            transition: transform 0.1s;
+        }
+        .btn-guess:active { transform: scale(0.98); }
+        .btn-real { background: #2e7d32; box-shadow: 0 4px 0 #1b5e20; }
+        .btn-fake { background: #c62828; box-shadow: 0 4px 0 #b71c1c; }
+
+        .admin-bar {
+            width: 100%;
+            display: flex;
+            gap: 10px;
+            height: 50px;
+        }
+        .btn-admin {
+            flex: 1;
+            background: #333;
+            border: 1px solid #555;
+            color: #ccc;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn-admin:hover { background: #444; color: white; }
+        
+        .btn-next-round {
+            background: var(--neon-blue);
+            color: black;
+            border: none;
+            box-shadow: 0 0 10px var(--neon-blue);
+            display: none; 
+        }
+        .btn-next-round:hover { background: #fff; }
+
+        /* --- OVERLAYS --- */
+        .overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.85);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            display: none;
+            backdrop-filter: blur(5px);
+            z-index: 10;
+            padding: 20px;
+            text-align: center;
+        }
+        .correct-text { color: var(--neon-green); font-size: 4rem; font-weight: 900; text-shadow: 0 0 20px var(--neon-green); animation: popIn 0.3s; }
+        .wrong-text { color: var(--neon-red); font-size: 4rem; font-weight: 900; text-shadow: 0 0 20px var(--neon-red); animation: shake 0.4s; }
+        .hint-text { font-size: 1.5rem; color: white; margin-top: 20px; line-height: 1.5; }
+        .hint-detail { font-size: 1rem; color: #aaa; margin-top: 10px; font-style: italic; }
+
+        @keyframes popIn { 0% { transform: scale(0); } 100% { transform: scale(1); } }
+        @keyframes shake { 0% { transform: translateX(0); } 25% { transform: translateX(-10px); } 75% { transform: translateX(10px); } 100% { transform: translateX(0); } }
+
+        /* --- CONFETTI --- */
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #f00;
+            animation: fall linear forwards;
+            z-index: 999;
+        }
+        @keyframes fall {
+            0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+
+        /* --- SCREENS --- */
+        .full-screen {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95);
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+        .big-btn {
+            padding: 20px 50px;
+            font-size: 2rem;
+            background: var(--neon-green);
+            color: black;
+            margin-top: 30px;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 0 20px var(--neon-green);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0% { box-shadow: 0 0 20px var(--neon-green); } 50% { box-shadow: 0 0 40px var(--neon-green); } 100% { box-shadow: 0 0 20px var(--neon-green); } }
+
+    </style>
+</head>
+<body>
+
+    <button class="lang-btn" onclick="toggleLanguage()">🌐 EN / 中</button>
+
+    <!-- START SCREEN -->
+    <div class="full-screen" id="startScreen">
+        <h1 id="titleText" style="font-size: 3rem; color: var(--neon-green); margin: 0;">AI 真假偵探</h1>
+        <p id="subTitleText" style="color: #888; letter-spacing: 2px;">防詐騙訓練課程</p>
+        <p id="missionText" style="max-width: 600px; color: #ccc; font-size: 1.2rem; margin-top: 20px;">
+            你的任務是分辨這張照片是「真人」還是「AI 生成」。<br>
+            善用 <b>暫停</b> 講解，按 <b>下一步</b> 繼續。
+        </p>
+        <button id="startBtnText" class="big-btn" onclick="startGame()">開始訓練</button>
+    </div>
+
+    <!-- END SCREEN -->
+    <div class="full-screen" id="endScreen" style="display: none;">
+        <h1 id="endTitle" style="font-size: 3rem; color: white;">訓練結束</h1>
+        <div id="finalScore" style="font-size: 6rem; font-weight: bold; color: var(--neon-green);">0/0</div>
+        <p id="finalMessage" style="font-size: 1.5rem;">...</p>
+        <button id="retryBtn" class="big-btn" onclick="location.reload()">重新開始</button>
+    </div>
+
+    <!-- GAME AREA -->
+    <div class="game-wrapper">
+        <div class="header">
+            <div><span id="scoreLabel">得分</span>: <span id="scoreVal" style="color: var(--neon-green)">0</span></div>
+            <div><span id="roundLabel">回合</span>: <span id="roundVal">1</span>/10</div>
+        </div>
+
+        <div class="timer-container">
+            <div class="timer-bar" id="timerBar"></div>
+        </div>
+
+        <div class="image-frame">
+            <img id="gameImage" src="" alt="Loading...">
+            
+            <div class="overlay" id="resultOverlay">
+                <div id="resultIcon"></div>
+                <div id="resultHint" class="hint-text"></div>
+                <div id="clickNextHint" class="hint-detail">點擊「下一張」繼續...</div>
+            </div>
+        </div>
+
+        <div class="controls" id="guessButtons">
+            <button id="btnReal" class="btn-guess btn-real" onclick="makeGuess('real')">📸 真人拍攝</button>
+            <button id="btnFake" class="btn-guess btn-fake" onclick="makeGuess('fake')">🤖 AI 生成</button>
+        </div>
+
+        <div class="admin-bar">
+            <button class="btn-admin" id="pauseBtn" onclick="togglePause()">⏸️ 暫停</button>
+            <button class="btn-admin" id="skipBtn" onclick="skipOrNext()">⏭️ 跳過</button>
+            <button class="btn-admin btn-next-round" id="nextActionBtn" onclick="nextRound()">➡️ 下一張</button>
+        </div>
+    </div>
+
+    <script>
+        // --- TRANSLATION DATA ---
+        let currentLang = 'tw'; // Default Taiwanese
+        const translations = {
+            tw: {
+                title: "AI 真假偵探",
+                subtitle: "防詐騙訓練課程",
+                mission: "你的任務是分辨這張照片是「真人」還是「AI 生成」。<br>善用 <b>暫停</b> 講解，按 <b>下一步</b> 繼續。",
+                start: "開始訓練",
+                endTitle: "訓練結束",
+                retry: "重新開始",
+                score: "得分",
+                round: "回合",
+                btnReal: "📸 真人拍攝",
+                btnFake: "🤖 AI 生成",
+                pause: "⏸️ 暫停",
+                resume: "▶️ 繼續",
+                skip: "⏭️ 跳過",
+                next: "➡️ 下一張",
+                clickNext: "點擊「下一張」繼續...",
+                correct: "答對了！",
+                wrong: "答錯了！",
+                timeUp: "⏰ 時間到",
+                fakeHint: "這是 <span style='color:var(--neon-red)'>AI 生成</span> 的圖片。<br>再接再厲 XD。",
+                realHint: "這是一張 <span style='color:var(--neon-green)'>真實</span> 的照片。",
+                msgHigh: "太厲害了！你有一雙火眼金睛。",
+                msgLow: "小心！你在網路上很容易被騙。"
+            },
+            en: {
+                title: "AI FRAUD DETECTION",
+                subtitle: "TRAINING MODULE",
+                mission: "Identify if the photo is REAL or FAKE.<br>Use <b>PAUSE</b> to explain. Click <b>NEXT</b> to continue.",
+                start: "START GAME",
+                endTitle: "SESSION COMPLETE",
+                retry: "RESTART",
+                score: "SCORE",
+                round: "ROUND",
+                btnReal: "📸 REAL PHOTO",
+                btnFake: "🤖 AI FAKE",
+                pause: "⏸️ PAUSE",
+                resume: "▶️ RESUME",
+                skip: "⏭️ SKIP",
+                next: "➡️ NEXT PHOTO",
+                clickNext: "Click 'NEXT PHOTO' to continue...",
+                correct: "CORRECT!",
+                wrong: "WRONG!",
+                timeUp: "⏰ TIME UP",
+                fakeHint: "This is <span style='color:var(--neon-red)'>AI GENERATED</span>.<br>Oh no..XD",
+                realHint: "This is a <span style='color:var(--neon-green)'>REAL PHOTO</span>.",
+                msgHigh: "Excellent Skills! You are safe.",
+                msgLow: "Be Careful! Don't trust everything online."
+            }
+        };
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'tw' ? 'en' : 'tw';
+            updateUIText();
+        }
+
+        function updateUIText() {
+            const t = translations[currentLang];
+            document.getElementById('titleText').innerText = t.title;
+            document.getElementById('subTitleText').innerText = t.subtitle;
+            document.getElementById('missionText').innerHTML = t.mission;
+            document.getElementById('startBtnText').innerText = t.start;
+            document.getElementById('endTitle').innerText = t.endTitle;
+            document.getElementById('retryBtn').innerText = t.retry;
+            document.getElementById('scoreLabel').innerText = t.score;
+            document.getElementById('roundLabel').innerText = t.round;
+            document.getElementById('btnReal').innerText = t.btnReal;
+            document.getElementById('btnFake').innerText = t.btnFake;
+            document.getElementById('skipBtn').innerText = t.skip;
+            document.getElementById('nextActionBtn').innerText = t.next;
+            document.getElementById('clickNextHint').innerText = t.clickNext;
+
+            // Update dynamic buttons based on state
+            if(isPaused) {
+                document.getElementById('pauseBtn').innerText = t.resume;
+            } else {
+                document.getElementById('pauseBtn').innerText = t.pause;
+            }
+        }
+
+        // --- CONFIGURATION ---
+        const TOTAL_ROUNDS = 10;
+        const TIME_LIMIT_SEC = 10; 
+        const TOTAL_IMAGES_IN_FOLDER = 20;
+
+        // --- STATE ---
+        let currentRound = 0;
+        let score = 0;
+        let currentType = ''; 
+        let timeLeft = 0;
+        let timerInterval;
+        let isPaused = false;
+        let isRoundActive = false; 
+        let usedRealIndices = [];
+        let usedFakeIndices = [];
+
+        // --- AUDIO ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playTone(freq, type, startTime, duration) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.value = freq;
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(startTime);
+            gain.gain.setValueAtTime(0.1, startTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+            osc.stop(startTime + duration);
+        }
+        function playSound(type) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const now = audioCtx.currentTime;
+            if (type === 'correct') {
+                playTone(523.25, 'sine', now, 0.4);       
+                playTone(659.25, 'sine', now + 0.1, 0.4); 
+                playTone(783.99, 'sine', now + 0.2, 0.6); 
+                playTone(1046.50, 'triangle', now + 0.2, 0.3); 
+            } else if (type === 'wrong') {
+                playTone(150, 'sawtooth', now, 0.3);
+                playTone(100, 'sawtooth', now + 0.15, 0.4);
+            }
+        }
+
+        // --- CONFETTI ---
+        function triggerConfetti() {
+            const colors = ['#0f0', '#ffeb3b', '#00e5ff', '#ff00ff', '#ffffff'];
+            for (let i = 0; i < 50; i++) {
+                const confetti = document.createElement('div');
+                confetti.classList.add('confetti');
+                confetti.style.left = Math.random() * 100 + 'vw';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.animationDuration = (Math.random() * 2 + 1) + 's';
+                confetti.style.animationDelay = (Math.random() * 0.5) + 's';
+                document.body.appendChild(confetti);
+                setTimeout(() => confetti.remove(), 3000);
+            }
+        }
+
+        // --- LOGIC ---
+        function startGame() {
+            document.getElementById('startScreen').style.display = 'none';
+            usedRealIndices = Array.from({length: TOTAL_IMAGES_IN_FOLDER}, (_, i) => i + 1).sort(() => Math.random() - 0.5);
+            usedFakeIndices = Array.from({length: TOTAL_IMAGES_IN_FOLDER}, (_, i) => i + 1).sort(() => Math.random() - 0.5);
+            score = 0;
+            currentRound = 0;
+            document.getElementById('scoreVal').innerText = "0";
+            nextRound();
+        }
+
+        function nextRound() {
+            if (currentRound >= TOTAL_ROUNDS) {
+                endGame();
+                return;
+            }
+            currentRound++;
+            document.getElementById('roundVal').innerText = currentRound;
+            document.getElementById('resultOverlay').style.display = 'none';
+            document.getElementById('guessButtons').style.pointerEvents = 'auto'; 
+            document.getElementById('guessButtons').style.opacity = '1';
+            
+            document.getElementById('skipBtn').style.display = 'flex';
+            document.getElementById('nextActionBtn').style.display = 'none';
+            
+            isPaused = false;
+            updateUIText(); // Ensure button text is reset
+            isRoundActive = true;
+
+            currentType = Math.random() < 0.5 ? 'real' : 'fake';
+            const imgEl = document.getElementById('gameImage');
+            
+            let imgIndex;
+            if (currentType === 'real') {
+                imgIndex = usedRealIndices.pop() || 1;
+                imgEl.src = `real_images/${imgIndex}.png`;
+            } else {
+                imgIndex = usedFakeIndices.pop() || 1;
+                imgEl.src = `fake_images/${imgIndex}.png`;
+            }
+            startTimer();
+        }
+
+        function startTimer() {
+            timeLeft = TIME_LIMIT_SEC * 100;
+            const bar = document.getElementById('timerBar');
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if (isPaused) return;
+                timeLeft--;
+                const percentage = (timeLeft / (TIME_LIMIT_SEC * 100)) * 100;
+                bar.style.width = percentage + "%";
+                if (percentage > 50) bar.style.background = `linear-gradient(90deg, var(--neon-green), #ffeb3b)`;
+                else bar.style.background = `linear-gradient(90deg, #ffeb3b, var(--neon-red))`;
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    handleTimeOut();
+                }
+            }, 10);
+        }
+
+        function handleTimeOut() {
+            playSound('wrong');
+            const t = translations[currentLang];
+            showResult(false, t.timeUp);
+        }
+
+        function makeGuess(userGuess) {
+            if (!isRoundActive) return;
+            clearInterval(timerInterval);
+            const isCorrect = (userGuess === currentType);
+            const t = translations[currentLang];
+
+            if (isCorrect) {
+                score++;
+                playSound('correct');
+                triggerConfetti();
+                document.getElementById('scoreVal').innerText = score;
+            } else {
+                playSound('wrong');
+            }
+            showResult(isCorrect, isCorrect ? t.correct : t.wrong);
+        }
+
+        function showResult(isCorrect, text) {
+            isRoundActive = false; 
+            document.getElementById('skipBtn').style.display = 'none';
+            document.getElementById('nextActionBtn').style.display = 'flex';
+            document.getElementById('guessButtons').style.pointerEvents = 'none';
+            document.getElementById('guessButtons').style.opacity = '0.5';
+
+            const overlay = document.getElementById('resultOverlay');
+            const iconDiv = document.getElementById('resultIcon');
+            const hintDiv = document.getElementById('resultHint');
+            const t = translations[currentLang];
+
+            overlay.style.display = 'flex';
+            iconDiv.innerHTML = text;
+            iconDiv.className = isCorrect ? 'correct-text' : 'wrong-text';
+
+            if (currentType === 'fake') {
+                hintDiv.innerHTML = t.fakeHint;
+            } else {
+                hintDiv.innerHTML = t.realHint;
+            }
+        }
+
+        function togglePause() {
+            isPaused = !isPaused;
+            updateUIText(); // Updates the button text
+            const btn = document.getElementById('pauseBtn');
+            if (isPaused) {
+                btn.style.background = "var(--neon-green)";
+                btn.style.color = "black";
+            } else {
+                btn.style.background = "#333";
+                btn.style.color = "#ccc";
+            }
+        }
+
+        function skipOrNext() {
+            if (isRoundActive) {
+                clearInterval(timerInterval);
+                nextRound();
+            } else {
+                nextRound();
+            }
+        }
+
+        function endGame() {
+            document.getElementById('endScreen').style.display = 'flex';
+            document.getElementById('finalScore').innerText = `${score}/${TOTAL_ROUNDS}`;
+            const msg = document.getElementById('finalMessage');
+            const t = translations[currentLang];
+            if (score > 7) msg.innerText = t.msgHigh;
+            else msg.innerText = t.msgLow;
+        }
+    </script>
+</body>
+</html>
