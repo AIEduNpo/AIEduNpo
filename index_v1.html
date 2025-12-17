@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Fraud Detection - Lecture Mode</title>
+    <style>
+        :root {
+            --neon-green: #00ff41;
+            --neon-red: #ff0033;
+            --bg-color: #000;
+        }
+        body {
+            font-family: "Microsoft JhengHei", sans-serif;
+            background-color: var(--bg-color);
+            color: white;
+            margin: 0;
+            overflow: hidden; /* No scrollbars */
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            user-select: none;
+        }
+
+        /* --- THE IMAGE (MAX SIZE) --- */
+        #gameImage {
+            width: 100vw;
+            height: 100vh;
+            object-fit: contain; /* Show whole photo without cropping */
+            z-index: 1;
+        }
+
+        /* --- THE CLOCK --- */
+        .clock-container {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            font-size: 3rem;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            z-index: 10;
+            transition: all 0.3s;
+            background: rgba(0,0,0,0.3);
+            padding: 10px 20px;
+            border-radius: 10px;
+        }
+        
+        /* Nervous State (Time Up) */
+        .clock-danger {
+            color: var(--neon-red);
+            font-size: 4.5rem; /* Grow bigger */
+            animation: heartBeat 1s infinite;
+            background: rgba(0,0,0,0.7);
+            border: 2px solid var(--neon-red);
+        }
+
+        @keyframes heartBeat {
+            0% { transform: scale(1); }
+            15% { transform: scale(1.1); }
+            30% { transform: scale(1); }
+            45% { transform: scale(1.1); }
+            60% { transform: scale(1); }
+            100% { transform: scale(1); }
+        }
+
+        /* --- FLOATING BUTTONS --- */
+        .controls {
+            position: absolute;
+            bottom: 40px;
+            display: flex;
+            gap: 40px;
+            z-index: 10;
+            width: 100%;
+            justify-content: center;
+            pointer-events: none; /* Let clicks pass through if not on button */
+        }
+
+        .btn-float {
+            pointer-events: auto;
+            padding: 15px 50px;
+            font-size: 2rem;
+            font-weight: 900;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: transform 0.2s, box-shadow 0.2s;
+            opacity: 0.9;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            font-family: "Microsoft JhengHei", sans-serif;
+        }
+        
+        .btn-real { 
+            background: rgba(46, 125, 50, 0.9); 
+            color: white; 
+            border: 2px solid #4caf50;
+        }
+        .btn-fake { 
+            background: rgba(198, 40, 40, 0.9); 
+            color: white; 
+            border: 2px solid #f44336;
+        }
+
+        .btn-float:hover { transform: scale(1.1); opacity: 1; }
+        .btn-float:active { transform: scale(0.95); }
+
+        /* --- FEEDBACK OVERLAYS --- */
+        .feedback-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 20;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(5px);
+        }
+
+        /* Big Red Cross */
+        .cross-mark {
+            font-size: 20rem;
+            color: var(--neon-red);
+            font-weight: bold;
+            animation: shake 0.4s;
+            text-shadow: 0 0 50px var(--neon-red);
+        }
+
+        /* Happy Result */
+        .success-mark {
+            font-size: 5rem;
+            color: var(--neon-green);
+            font-weight: bold;
+            text-align: center;
+            text-shadow: 0 0 30px var(--neon-green);
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .educational-text {
+            color: white;
+            font-size: 1.8rem;
+            margin-top: 20px;
+            max-width: 80%;
+            text-align: center;
+        }
+
+        .continue-hint {
+            margin-top: 40px;
+            color: #888;
+            font-size: 1.2rem;
+            animation: pulse 2s infinite;
+        }
+
+        /* --- RESET LINK (Discrete) --- */
+        .reset-link {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            color: #333;
+            font-size: 0.8rem;
+            text-decoration: none;
+            z-index: 30;
+            cursor: pointer;
+        }
+        .reset-link:hover { color: #666; }
+
+        /* --- ANIMATIONS --- */
+        @keyframes shake { 0% { transform: translateX(0); } 25% { transform: translateX(-20px); } 75% { transform: translateX(20px); } 100% { transform: translateX(0); } }
+        @keyframes popIn { 0% { transform: scale(0); } 100% { transform: scale(1); } }
+        @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
+        
+        /* Confetti */
+        .confetti { position: absolute; width: 15px; height: 15px; z-index: 25; animation: fall linear forwards; }
+        @keyframes fall { to { transform: translateY(100vh) rotate(720deg); opacity: 0; } }
+
+    </style>
+</head>
+<body>
+
+    <!-- DISCREET RESET BUTTON FOR NEW LECTURE -->
+    <div class="reset-link" onclick="resetMemory()">[Reset Memory]</div>
+
+    <!-- MAIN GAME IMAGE -->
+    <img id="gameImage" src="" alt="Game Image">
+
+    <!-- CLOCK -->
+    <div id="clock" class="clock-container">10</div>
+
+    <!-- FLOATING CONTROLS -->
+    <div class="controls" id="btnContainer">
+        <button class="btn-float btn-real" onclick="makeGuess('real')">📸 真人 (Real)</button>
+        <button class="btn-float btn-fake" onclick="makeGuess('fake')">🤖 AI 生成 (Fake)</button>
+    </div>
+
+    <!-- FEEDBACK OVERLAY -->
+    <div id="feedbackOverlay" class="feedback-overlay" onclick="nextPhoto()">
+        <div id="feedbackIcon"></div>
+        <div id="feedbackText" class="educational-text"></div>
+        <div class="continue-hint">點擊畫面 或 按空白鍵 繼續 (Click or Space to Continue)</div>
+    </div>
+
+    <script>
+        // --- CONFIG ---
+        const TIME_LIMIT = 10;
+        const TOTAL_IMAGES_PER_TYPE = 20; // 1-20.png
+
+        // --- STATE ---
+        let currentType = ''; 
+        let currentTimer = TIME_LIMIT;
+        let timerInterval;
+        let heartbeatInterval;
+        let isGameActive = false;
+        
+        // Memory Logic (LocalStorage)
+        let usedReal = JSON.parse(localStorage.getItem('ai_game_used_real')) || [];
+        let usedFake = JSON.parse(localStorage.getItem('ai_game_used_fake')) || [];
+
+        // --- AUDIO ENGINE ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        function resumeAudio() { if (audioCtx.state === 'suspended') audioCtx.resume(); }
+
+        function playTone(freq, type, duration, vol=0.1) {
+            resumeAudio();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.value = freq;
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        function playHeartbeat() {
+            // Simulates a low "Thud-Thud"
+            playTone(80, 'triangle', 0.1, 0.5);
+            setTimeout(() => playTone(60, 'triangle', 0.15, 0.4), 150);
+        }
+
+        function playSuccessSound() {
+            // Happy Major Chord Arpeggio
+            const now = audioCtx.currentTime;
+            [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
+                setTimeout(() => playTone(freq, 'sine', 0.3, 0.2), i * 100);
+            });
+        }
+
+        function playFailSound() {
+            // Harsh Buzz
+            playTone(100, 'sawtooth', 0.4, 0.3);
+            setTimeout(() => playTone(80, 'sawtooth', 0.4, 0.3), 150);
+        }
+
+        // --- GAME LOGIC ---
+
+        function initGame() {
+            document.getElementById('feedbackOverlay').style.display = 'none';
+            loadNextPhoto();
+        }
+
+        function loadNextPhoto() {
+            // 1. Pick Type (Real vs Fake)
+            currentType = Math.random() < 0.5 ? 'real' : 'fake';
+            
+            // 2. Check if we ran out of photos
+            if (usedReal.length >= TOTAL_IMAGES_PER_TYPE && usedFake.length >= TOTAL_IMAGES_PER_TYPE) {
+                alert("All photos shown! Please reset memory to play again.");
+                return;
+            }
+
+            // 3. Pick Unique Photo ID
+            let photoId;
+            let pool = currentType === 'real' ? usedReal : usedFake;
+            let available = [];
+            
+            for(let i=1; i<=TOTAL_IMAGES_PER_TYPE; i++) {
+                if(!pool.includes(i)) available.push(i);
+            }
+
+            if (available.length === 0) {
+                // If one side runs out, flip to the other side
+                currentType = currentType === 'real' ? 'fake' : 'real';
+                pool = currentType === 'real' ? usedReal : usedFake;
+                for(let i=1; i<=TOTAL_IMAGES_PER_TYPE; i++) if(!pool.includes(i)) available.push(i);
+            }
+
+            // Random pick from available
+            photoId = available[Math.floor(Math.random() * available.length)];
+
+            // Save to memory
+            if (currentType === 'real') {
+                usedReal.push(photoId);
+                localStorage.setItem('ai_game_used_real', JSON.stringify(usedReal));
+                document.getElementById('gameImage').src = `real_images/${photoId}.png`;
+            } else {
+                usedFake.push(photoId);
+                localStorage.setItem('ai_game_used_fake', JSON.stringify(usedFake));
+                document.getElementById('gameImage').src = `fake_images/${photoId}.png`;
+            }
+
+            // 4. Start Round
+            isGameActive = true;
+            startTimer();
+            document.getElementById('btnContainer').style.display = 'flex';
+        }
+
+        function startTimer() {
+            clearInterval(timerInterval);
+            clearInterval(heartbeatInterval);
+            currentTimer = TIME_LIMIT;
+            
+            const clockEl = document.getElementById('clock');
+            clockEl.className = 'clock-container'; // Reset style
+            clockEl.innerText = currentTimer;
+
+            timerInterval = setInterval(() => {
+                currentTimer--;
+                
+                if (currentTimer >= 0) {
+                    clockEl.innerText = currentTimer;
+                }
+
+                if (currentTimer <= 0) {
+                    // Time is up, but DON'T stop game. Make it NERVOUS.
+                    clearInterval(timerInterval);
+                    enterNervousMode();
+                }
+            }, 1000);
+        }
+
+        function enterNervousMode() {
+            const clockEl = document.getElementById('clock');
+            clockEl.className = 'clock-container clock-danger'; // Turn red and pulse
+            clockEl.innerText = "0"; // Keep at 0
+
+            // Start Heartbeat Sound Loop
+            playHeartbeat();
+            heartbeatInterval = setInterval(playHeartbeat, 1000); // Thump-Thump every second
+        }
+
+        function makeGuess(guess) {
+            if (!isGameActive) return;
+            isGameActive = false;
+            
+            // Stop timers and sounds
+            clearInterval(timerInterval);
+            clearInterval(heartbeatInterval);
+
+            const isCorrect = (guess === currentType);
+            showFeedback(isCorrect);
+        }
+
+        function showFeedback(isCorrect) {
+            const overlay = document.getElementById('feedbackOverlay');
+            const icon = document.getElementById('feedbackIcon');
+            const text = document.getElementById('feedbackText');
+            
+            document.getElementById('btnContainer').style.display = 'none';
+            overlay.style.display = 'flex'; // Show overlay
+
+            if (isCorrect) {
+                playSuccessSound();
+                triggerConfetti();
+                icon.innerHTML = '<div class="success-mark">CORRECT!<br>答對了!</div>';
+                text.innerHTML = ""; // Less text for win, just celebration
+            } else {
+                playFailSound();
+                icon.innerHTML = '<div class="cross-mark">❌</div>';
+                
+                // Educational Message
+                if (currentType === 'fake') {
+                    text.innerHTML = "<span style='color:#f44336; font-size:2.5rem; font-weight:bold'>這是 AI 生成的!</span><br>This was AI Generated.<br>Check the background and lighting.";
+                } else {
+                    text.innerHTML = "<span style='color:#4caf50; font-size:2.5rem; font-weight:bold'>這是真人照片!</span><br>This was a Real Photo.";
+                }
+            }
+        }
+
+        function nextPhoto() {
+            // Hide overlay and load next
+            document.getElementById('feedbackOverlay').style.display = 'none';
+            loadNextPhoto();
+        }
+
+        function triggerConfetti() {
+            const colors = ['#00ff41', '#ffff00', '#00e5ff'];
+            for (let i = 0; i < 60; i++) {
+                const c = document.createElement('div');
+                c.className = 'confetti';
+                c.style.left = Math.random() * 100 + 'vw';
+                c.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                c.style.animationDuration = (Math.random() * 2 + 1) + 's';
+                document.body.appendChild(c);
+                setTimeout(() => c.remove(), 3000);
+            }
+        }
+
+        // --- KEYBOARD CONTROLS ---
+        document.addEventListener('keydown', (e) => {
+            if (isGameActive) {
+                if (e.key === "ArrowLeft") makeGuess('real');
+                if (e.key === "ArrowRight") makeGuess('fake');
+            } else {
+                // If overlay is showing, spacebar moves to next
+                if (e.key === " " || e.key === "Enter") nextPhoto();
+            }
+        });
+
+        // --- MEMORY RESET ---
+        function resetMemory() {
+            if(confirm("Start a new lecture? This will forget all previously shown photos.")) {
+                localStorage.removeItem('ai_game_used_real');
+                localStorage.removeItem('ai_game_used_fake');
+                location.reload();
+            }
+        }
+
+        // --- START ---
+        // Need user interaction to allow audio
+        document.body.addEventListener('click', function() { resumeAudio(); }, {once:true});
+        initGame();
+
+    </script>
+</body>
+</html>
