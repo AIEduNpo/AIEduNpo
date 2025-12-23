@@ -24,7 +24,7 @@
             user-select: none;
         }
 
-        /* --- START SCREEN (NEW) --- */
+        /* --- START SCREEN --- */
         #startScreen {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -93,21 +93,21 @@
             flex-direction: column;
             align-items: center;
             z-index: 10;
+            filter: drop-shadow(0 0 15px rgba(0,0,0,0.5));
         }
 
         .police-img-main {
-            width: 220px;
+            width: 250px; 
             height: auto;
             transition: transform 0.2s;
-            filter: drop-shadow(0 0 10px rgba(0,0,0,0.8));
         }
 
         .progress-container {
-            width: 200px;
-            height: 20px;
+            width: 220px;
+            height: 25px;
             background: #333;
             border: 2px solid white;
-            border-radius: 10px;
+            border-radius: 15px;
             margin-top: 10px;
             overflow: hidden;
             position: relative;
@@ -118,93 +118,6 @@
             width: 0%; 
             background: linear-gradient(90deg, #ffeb3b, var(--neon-green));
             transition: width 0.5s cubic-bezier(0.4, 0.0, 0.2, 1);
-        }
-
-        /* --- LEFT SIDE: EQUIPMENT COLLECTION --- */
-        .equipment-panel {
-            position: absolute;
-            bottom: 20px; 
-            left: 20px;  
-            width: 260px;
-            background: rgba(0, 0, 0, 0.7);
-            border-radius: 15px;
-            padding: 15px;
-            z-index: 10;
-            border: 1px solid #555;
-            backdrop-filter: blur(5px);
-        }
-
-        .collection-title {
-            text-align: center;
-            margin-bottom: 10px;
-            font-size: 1.2rem;
-            color: #ffeb3b;
-            font-weight: bold;
-            letter-spacing: 2px;
-        }
-
-        .grid-container {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 8px;
-        }
-
-        .grid-item {
-            width: 50px;
-            height: 50px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            border: 1px solid #444;
-            transition: all 0.3s;
-        }
-
-        .grid-item img {
-            width: 80%;
-            height: 80%;
-            object-fit: contain;
-            opacity: 0.2; 
-            filter: grayscale(100%);
-            transition: all 0.5s;
-        }
-
-        .unlocked {
-            background: rgba(255, 255, 255, 0.9) !important;
-            border-color: var(--neon-green) !important;
-            box-shadow: 0 0 15px var(--neon-green);
-            transform: scale(1.1);
-            z-index: 5;
-        }
-        
-        .unlocked img {
-            opacity: 1 !important;
-            filter: grayscale(0%) !important;
-        }
-
-        /* --- CLOCK --- */
-        .clock-container {
-            position: absolute;
-            top: 20px;
-            right: 30px;
-            font-family: 'Courier New', monospace;
-            font-weight: bold;
-            font-size: 3rem;
-            color: white;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-            z-index: 10;
-            background: rgba(0,0,0,0.4);
-            padding: 5px 20px;
-            border-radius: 10px;
-            border: 1px solid #555;
-        }
-        .clock-danger {
-            color: var(--neon-red);
-            font-size: 5rem;
-            animation: heartBeat 1s infinite;
-            background: rgba(0,0,0,0.9);
-            border: 4px solid var(--neon-red);
         }
 
         /* --- BUTTONS --- */
@@ -330,7 +243,6 @@
         @keyframes shake { 0% { transform: translateX(0); } 25% { transform: translateX(-30px); } 75% { transform: translateX(30px); } 100% { transform: translateX(0); } }
         @keyframes popIn { 0% { transform: scale(0); } 100% { transform: scale(1); } }
         @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
-        @keyframes heartBeat { 0% { transform: scale(1); } 15% { transform: scale(1.1); } 30% { transform: scale(1); } 45% { transform: scale(1.1); } 60% { transform: scale(1); } 100% { transform: scale(1); } }
         
         /* CONFETTI FROM TOP */
         .confetti { 
@@ -361,22 +273,11 @@
     <!-- MAIN GAME IMAGE -->
     <img id="gameImage" src="" alt="Game Image">
 
-    <!-- CLOCK -->
-    <div id="clock" class="clock-container">10</div>
-
     <!-- RIGHT: POLICE & PROGRESS -->
     <div class="police-panel">
         <img id="policeMain" class="police-img-main" src="police_images/Althea_happy.png" alt="Police">
         <div class="progress-container">
             <div id="progressBar" class="progress-bar"></div>
-        </div>
-    </div>
-
-    <!-- LEFT: EQUIPMENT COLLECTION -->
-    <div class="equipment-panel">
-        <div class="collection-title">裝備收集冊</div>
-        <div class="grid-container" id="gridContainer">
-            <!-- Items generated by JS -->
         </div>
     </div>
 
@@ -401,16 +302,11 @@
 
     <script>
         // --- CONFIGURATION ---
-        const TIME_LIMIT = 10;
         const TOTAL_IMAGES_PER_TYPE = 30; 
-        const MAX_ITEMS = 12;
+        const MAX_SCORE = 12; // Used for progress bar scaling
 
         // --- STATE ---
         let currentType = ''; 
-        let currentTimer = TIME_LIMIT;
-        let timerInterval;
-        let heartbeatInterval;
-        let heartbeatVolume = 0.5;
         let isGameActive = false;
         let currentScore = 0; 
 
@@ -437,14 +333,6 @@
         }
 
         // --- SOUND EFFECTS ---
-        function playTick() { playTone(800, 'square', 0.05, 0.05); }
-        
-        function playHeartbeat() {
-            playTone(60, 'triangle', 0.1, heartbeatVolume);
-            setTimeout(() => playTone(50, 'triangle', 0.15, heartbeatVolume * 0.8), 150);
-            if(heartbeatVolume < 2.0) heartbeatVolume += 0.1;
-        }
-
         function playFailSound() {
             playTone(100, 'sawtooth', 0.6, 0.4);
             setTimeout(() => playTone(80, 'sawtooth', 0.6, 0.4), 200);
@@ -457,24 +345,9 @@
         }
 
         // --- INIT ---
-        function generateGrid() {
-            const grid = document.getElementById('gridContainer');
-            grid.innerHTML = '';
-            for(let i=1; i<=MAX_ITEMS; i++) {
-                const div = document.createElement('div');
-                div.className = 'grid-item';
-                div.id = `slot-${i}`;
-                div.innerHTML = `<img src="equipments/eq_${i}.png" alt="Item ${i}">`;
-                grid.appendChild(div);
-            }
-            updateCollectionVisuals(); 
-        }
-
         function startGame() {
-            // User gesture triggers audio context
             resumeAudio();
             document.getElementById('startScreen').style.display = 'none';
-            generateGrid();
             document.getElementById('feedbackOverlay').style.display = 'none';
             document.getElementById('policeMain').src = "police_images/Althea_happy.png";
             loadNextPhoto();
@@ -516,7 +389,6 @@
             }
 
             isGameActive = true;
-            startTimer();
             document.getElementById('btnContainer').style.display = 'flex';
         }
 
@@ -543,66 +415,26 @@
             overlay.onclick = null; 
         }
 
-        function startTimer() {
-            clearInterval(timerInterval);
-            clearInterval(heartbeatInterval);
-            currentTimer = TIME_LIMIT;
-            heartbeatVolume = 0.5;
-            const clockEl = document.getElementById('clock');
-            clockEl.className = 'clock-container';
-            clockEl.innerText = currentTimer;
-
-            timerInterval = setInterval(() => {
-                currentTimer--;
-                if (currentTimer >= 0) {
-                    clockEl.innerText = currentTimer;
-                    playTick();
-                }
-                if (currentTimer <= 0) {
-                    clearInterval(timerInterval);
-                    enterNervousMode();
-                }
-            }, 1000);
-        }
-
-        function enterNervousMode() {
-            const clockEl = document.getElementById('clock');
-            clockEl.className = 'clock-container clock-danger';
-            clockEl.innerText = "0";
-            playHeartbeat();
-            heartbeatInterval = setInterval(playHeartbeat, 1000);
-        }
-
         function makeGuess(guess) {
             if (!isGameActive) return;
             isGameActive = false;
-            clearInterval(timerInterval);
-            clearInterval(heartbeatInterval);
 
             const isCorrect = (guess === currentType);
             
             if (isCorrect) {
                 document.getElementById('policeMain').src = "police_images/Althea_happy.png";
-                if(currentScore < MAX_ITEMS) currentScore++;
+                if(currentScore < MAX_SCORE) currentScore++;
             } else {
                 document.getElementById('policeMain').src = "police_images/Althea_shock.png";
                 if(currentScore > 0) currentScore--;
             }
 
-            updateCollectionVisuals();
+            updateProgressVisuals();
             showFeedback(isCorrect);
         }
 
-        function updateCollectionVisuals() {
-            for(let i=1; i<=MAX_ITEMS; i++) {
-                const slot = document.getElementById(`slot-${i}`);
-                if (i <= currentScore) {
-                    slot.classList.add('unlocked');
-                } else {
-                    slot.classList.remove('unlocked');
-                }
-            }
-            const percent = (currentScore / MAX_ITEMS) * 100;
+        function updateProgressVisuals() {
+            const percent = (currentScore / MAX_SCORE) * 100;
             document.getElementById('progressBar').style.width = percent + "%";
         }
 
@@ -682,10 +514,6 @@
                 location.reload();
             }
         }
-
-        // Initially we do NOT start game until button click
-        // But we ensure grid is visually ready
-        generateGrid();
 
     </script>
 </body>
