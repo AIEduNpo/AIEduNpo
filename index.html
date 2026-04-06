@@ -313,6 +313,9 @@
         // Memory Logic
         let usedReal = JSON.parse(localStorage.getItem('ai_game_used_real')) || [];
         let usedFake = JSON.parse(localStorage.getItem('ai_game_used_fake')) || [];
+        
+        // 【新增】用來記錄最近出現的照片類型，防止連續出現三次一樣的
+        let typeHistory = JSON.parse(localStorage.getItem('ai_game_type_history')) || [];
 
         // --- AUDIO ENGINE ---
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -357,12 +360,22 @@
             // RESET Police to Happy for new round
             document.getElementById('policeMain').src = "police_images/Althea_happy.png";
 
-            currentType = Math.random() < 0.5 ? 'real' : 'fake';
-            
             // CHECK IF FULL
             if (usedReal.length >= TOTAL_IMAGES_PER_TYPE && usedFake.length >= TOTAL_IMAGES_PER_TYPE) {
                 showEndGameScreen();
                 return;
+            }
+
+            // 【修改核心】判斷接下來要出真還是假
+            if (typeHistory.length >= 2 && typeHistory[typeHistory.length - 1] === 'real' && typeHistory[typeHistory.length - 2] === 'real') {
+                // 前兩次都是真實照片，這次強制出 AI 假照片
+                currentType = 'fake';
+            } else if (typeHistory.length >= 2 && typeHistory[typeHistory.length - 1] === 'fake' && typeHistory[typeHistory.length - 2] === 'fake') {
+                // 前兩次都是 AI 假照片，這次強制出真實照片
+                currentType = 'real';
+            } else {
+                // 否則，各 50% 機率隨機出題
+                currentType = Math.random() < 0.5 ? 'real' : 'fake';
             }
 
             let photoId;
@@ -370,12 +383,21 @@
             let available = [];
             for(let i=1; i<=TOTAL_IMAGES_PER_TYPE; i++) if(!pool.includes(i)) available.push(i);
 
+            // 【防呆機制】如果剛好某個類型已經全部出完了，強制切換到另一種
             if (available.length === 0) {
                 currentType = currentType === 'real' ? 'fake' : 'real';
                 pool = currentType === 'real' ? usedReal : usedFake;
                 for(let i=1; i<=TOTAL_IMAGES_PER_TYPE; i++) if(!pool.includes(i)) available.push(i);
             }
 
+            // 【更新紀錄】把這次的結果存起來，並且只保留最近兩次
+            typeHistory.push(currentType);
+            if (typeHistory.length > 2) {
+                typeHistory.shift(); // 移除最舊的紀錄，確保陣列裡永遠只有兩個元素
+            }
+            localStorage.setItem('ai_game_type_history', JSON.stringify(typeHistory));
+
+            // 挑選圖片
             photoId = available[Math.floor(Math.random() * available.length)];
 
             if (currentType === 'real') {
@@ -511,6 +533,7 @@
             if(confirm("確定要重置所有紀錄嗎?")) {
                 localStorage.removeItem('ai_game_used_real');
                 localStorage.removeItem('ai_game_used_fake');
+                localStorage.removeItem('ai_game_type_history'); // 【新增】連同歷史紀錄一起清除
                 location.reload();
             }
         }
